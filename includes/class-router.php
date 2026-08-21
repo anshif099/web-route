@@ -366,7 +366,7 @@ final class Router {
 	}
 
 	private function render_decoy( $status = 404 ) {
-		$content = '<div class="rain-decoy-mark" aria-hidden="true"></div><h1>' . esc_html__( 'This is not a WordPress website', 'rain-admin-login-security' ) . '</h1><p>' . esc_html__( 'The page you requested could not be found.', 'rain-admin-login-security' ) . '</p>';
+		$content = '<div class="rain-error-code" aria-label="404">404!</div>';
 		$this->render_page( __( 'Page not found', 'rain-admin-login-security' ), $content, $status );
 	}
 
@@ -380,17 +380,58 @@ final class Router {
 		header( 'X-Content-Type-Options: nosniff' );
 		header( 'Referrer-Policy: no-referrer' );
 		header( 'Permissions-Policy: camera=(), microphone=(), geolocation=()' );
-		header( "Content-Security-Policy: default-src 'none'; connect-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'self'" );
+		header( "Content-Security-Policy: default-src 'none'; connect-src 'self'; img-src 'self' data: https:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'self'" );
 		foreach ( $headers as $name => $value ) {
 			header( $name . ': ' . $value );
 		}
-		$site = get_bloginfo( 'name' );
-		?><!doctype html><html lang="<?php echo esc_attr( determine_locale() ); ?>"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?php echo esc_html( $title . ' — ' . $site ); ?></title><style><?php echo $this->styles(); ?></style></head><body><main class="rain-shell"><div class="rain-orb rain-orb-a"></div><div class="rain-orb rain-orb-b"></div><section class="rain-card"><div class="rain-brand" aria-label="Web Route">W</div><p class="rain-kicker">WEB ROUTE SECURITY</p><h1><?php echo esc_html( $title ); ?></h1><?php echo $content; ?></section></main></body></html><?php
+		$site        = get_bloginfo( 'name' );
+		$brand_image = $this->config->brand_image_url();
+		$initial     = strtoupper( substr( trim( wp_strip_all_tags( $site ) ), 0, 1 ) );
+		$initial     = $initial ? $initial : 'R';
+		$is_decoy    = 404 === (int) $status;
+		?><!doctype html><html lang="<?php echo esc_attr( determine_locale() ); ?>"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?php echo esc_html( $title . ' — ' . $site ); ?></title><style><?php echo $this->styles(); ?></style></head><body><main class="rain-shell"><div class="rain-grid" aria-hidden="true"></div><div class="rain-orb rain-orb-a"></div><div class="rain-orb rain-orb-b"></div><div class="rain-stack"><section class="rain-card<?php echo $is_decoy ? ' rain-card-decoy' : ''; ?>"><?php if ( $is_decoy && $brand_image ) : ?><img class="rain-watermark" src="<?php echo esc_url( $brand_image ); ?>" alt="" aria-hidden="true"><?php endif; ?><div class="rain-card-content"><div class="rain-brand<?php echo $brand_image ? ' rain-brand-has-image' : ''; ?>" aria-label="<?php echo esc_attr( $site ); ?>"><?php if ( $brand_image ) : ?><img src="<?php echo esc_url( $brand_image ); ?>" alt="<?php echo esc_attr( $site ); ?>"><?php else : ?><span aria-hidden="true"><?php echo esc_html( $initial ); ?></span><?php endif; ?></div><p class="rain-kicker">WEB ROUTE SECURITY</p><h1><?php echo esc_html( $title ); ?></h1><?php echo $content; ?></div></section><footer class="rain-footer"><?php esc_html_e( 'Powered by', 'rain-admin-login-security' ); ?> <a href="https://rainhopes.in/" target="_blank" rel="noopener noreferrer">rainhopes.in</a></footer></div></main></body></html><?php
 		exit;
 	}
 
 	private function styles() {
-		return '.rain-shell{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:linear-gradient(145deg,#f8fbff,#dbeeff);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#102a43;overflow:hidden;position:relative}.rain-card{position:relative;z-index:2;width:min(100%,460px);box-sizing:border-box;padding:42px;border:1px solid rgba(255,255,255,.8);border-radius:28px;background:rgba(255,255,255,.84);box-shadow:0 24px 80px rgba(28,91,145,.18);backdrop-filter:blur(14px);text-align:center;animation:rain-in .7s ease both}.rain-brand{width:52px;height:52px;display:grid;place-items:center;margin:0 auto 14px;border-radius:16px;background:#1261a0;color:#fff;font-weight:800;font-size:28px;box-shadow:0 10px 22px rgba(18,97,160,.28)}.rain-kicker{margin:0 0 10px;color:#2574a9;letter-spacing:.18em;font-size:11px;font-weight:800}.rain-card h1{margin:0 0 18px;font-size:clamp(25px,5vw,34px);line-height:1.12;color:#0b2540}.rain-card p{line-height:1.65}.rain-card form{display:grid;gap:10px;text-align:left;margin-top:22px}.rain-card label{font-size:13px;font-weight:700;color:#244b6b}.rain-card input[type=text],.rain-card input[type=password]{width:100%;box-sizing:border-box;padding:13px 14px;border:1px solid #b7d0e5;border-radius:12px;background:#fff;color:#102a43;font:inherit}.rain-card input:focus{outline:3px solid rgba(32,137,213,.25);border-color:#2089d5}.rain-check{display:flex;align-items:center;gap:8px;font-weight:500!important}.rain-check input{accent-color:#1261a0}.rain-button{display:inline-block;border:0;border-radius:12px;padding:13px 18px;background:#1261a0;color:#fff;text-align:center;text-decoration:none;font:700 15px inherit;cursor:pointer;box-shadow:0 10px 20px rgba(18,97,160,.22)}.rain-button:hover{background:#0b4f86}.rain-error{padding:11px 13px;border-radius:10px;background:#fff0f1;color:#a22635;font-size:14px}.rain-links{font-size:13px}.rain-links a{color:#1261a0}.rain-muted{color:#54718b;font-size:14px}.rain-ip{font-size:16px;word-break:break-all}.rain-spinner{width:52px;height:52px;margin:4px auto 22px;border:5px solid #c2dcf1;border-top-color:#1261a0;border-radius:50%;animation:rain-spin 1s linear infinite}.rain-block-icon{width:58px;height:58px;display:grid;place-items:center;margin:4px auto 20px;border-radius:50%;background:#1261a0;color:#fff;font-size:34px;font-weight:800;animation:rain-pulse 1.8s ease-in-out infinite}.rain-decoy-mark{width:70px;height:70px;margin:0 auto 20px;border:5px solid #b7d8f3;border-radius:50%;box-shadow:inset 0 0 0 12px #eaf5ff;animation:rain-pulse 2.4s ease-in-out infinite}.rain-orb{position:absolute;border-radius:50%;filter:blur(1px);opacity:.55;background:linear-gradient(135deg,#5db7f2,#a7ddff);animation:rain-float 8s ease-in-out infinite}.rain-orb-a{width:240px;height:240px;top:-80px;left:-70px}.rain-orb-b{width:320px;height:320px;right:-100px;bottom:-130px;animation-delay:-3s}@keyframes rain-in{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}@keyframes rain-spin{to{transform:rotate(360deg)}}@keyframes rain-pulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.06);opacity:1}}@keyframes rain-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(15px,24px,0)}}@media (max-width:520px){.rain-card{padding:30px 22px;border-radius:22px}}@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}';
+		$accent = $this->config->brand_color();
+		$rgb = $this->hex_to_rgb( $accent );
+		$deep = $this->mix_color( $rgb, array( 0, 0, 0 ), 0.3 );
+		$soft = $this->mix_color( $rgb, array( 255, 255, 255 ), 0.9 );
+		$contrast = $this->relative_luminance( $rgb ) > 0.48 ? '#19191b' : '#ffffff';
+		$variables = sprintf( '--rain-accent:%1$s;--rain-accent-rgb:%2$d,%3$d,%4$d;--rain-accent-deep:%5$s;--rain-accent-soft:%6$s;--rain-accent-contrast:%7$s;', $accent, $rgb[0], $rgb[1], $rgb[2], $deep, $soft, $contrast );
+
+		return '.rain-shell{' . $variables . '--rain-ink:#19191b;min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:linear-gradient(145deg,#fff,var(--rain-accent-soft));font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--rain-ink);overflow:hidden;position:relative}.rain-grid{position:absolute;inset:0;background-image:linear-gradient(to right,rgba(var(--rain-accent-rgb),.13) 1px,transparent 1px),linear-gradient(to bottom,rgba(25,25,27,.045) 1px,transparent 1px);background-size:clamp(94px,10vw,190px) 100%,100% 150px;opacity:.75}.rain-stack{position:relative;z-index:2;width:min(100%,460px);text-align:center}.rain-card{position:relative;width:100%;box-sizing:border-box;padding:42px;border:1px solid rgba(var(--rain-accent-rgb),.18);border-radius:28px;background:rgba(255,255,255,.94);box-shadow:0 24px 80px rgba(var(--rain-accent-rgb),.22);backdrop-filter:blur(14px);text-align:center;overflow:hidden;animation:rain-in .7s ease both}.rain-card-content{position:relative;z-index:2}.rain-brand{width:62px;height:62px;display:grid;place-items:center;margin:0 auto 14px;border-radius:18px;background:var(--rain-accent);color:var(--rain-accent-contrast);font-weight:900;font-size:30px;box-shadow:0 10px 24px rgba(var(--rain-accent-rgb),.34);overflow:hidden}.rain-brand-has-image{display:inline-flex;width:auto;height:auto;min-height:56px;max-width:200px;padding:7px 11px;border:1px solid rgba(var(--rain-accent-rgb),.18);border-radius:14px;background:rgba(255,255,255,.96);vertical-align:middle}.rain-brand img{display:block;width:auto;height:auto;max-width:180px;max-height:62px;object-fit:contain}.rain-kicker{margin:0 0 10px;color:var(--rain-accent-deep);letter-spacing:.18em;font-size:11px;font-weight:900}.rain-card h1{margin:0 0 18px;font-size:clamp(25px,5vw,34px);line-height:1.12;color:var(--rain-ink)}.rain-card p{line-height:1.65}.rain-card form{display:grid;gap:10px;text-align:left;margin-top:22px}.rain-card label{font-size:13px;font-weight:700;color:#333}.rain-card input[type=text],.rain-card input[type=password],.rain-card input[type=email]{width:100%;box-sizing:border-box;padding:13px 14px;border:1px solid rgba(var(--rain-accent-rgb),.45);border-radius:12px;background:#fff;color:var(--rain-ink);font:inherit}.rain-card input:focus{outline:3px solid rgba(var(--rain-accent-rgb),.25);border-color:var(--rain-accent)}.rain-check{display:flex;align-items:center;gap:8px;font-weight:500!important}.rain-check input{accent-color:var(--rain-accent)}.rain-button{display:inline-block;border:0;border-radius:12px;padding:13px 18px;background:var(--rain-accent);color:var(--rain-accent-contrast);text-align:center;text-decoration:none;font:700 15px inherit;cursor:pointer;box-shadow:0 10px 20px rgba(var(--rain-accent-rgb),.3);transition:background .2s,color .2s,transform .2s}.rain-button:hover{background:var(--rain-accent-deep);color:#fff;transform:translateY(-1px)}.rain-error{padding:11px 13px;border-radius:10px;background:#fff0f1;color:#a22635;font-size:14px}.rain-links{font-size:13px}.rain-links a,.rain-footer a{color:var(--rain-ink);text-decoration-color:var(--rain-accent);text-decoration-thickness:2px;text-underline-offset:3px}.rain-muted{color:#657174;font-size:14px}.rain-ip{font-size:16px;word-break:break-all}.rain-spinner{width:52px;height:52px;margin:4px auto 22px;border:5px solid var(--rain-accent-soft);border-top-color:var(--rain-accent);border-radius:50%;animation:rain-spin 1s linear infinite}.rain-block-icon{width:58px;height:58px;display:grid;place-items:center;margin:4px auto 20px;border-radius:50%;background:var(--rain-accent);color:var(--rain-accent-contrast);font-size:34px;font-weight:900;animation:rain-pulse 1.8s ease-in-out infinite}.rain-error-code{margin:2px 0 6px;color:var(--rain-accent);font-size:clamp(88px,20vw,138px);font-weight:950;letter-spacing:-.075em;line-height:.92;text-shadow:4px 4px 0 var(--rain-ink)}.rain-watermark{position:absolute;z-index:1;left:50%;top:60%;width:min(82%,340px);height:min(72%,280px);object-fit:contain;transform:translate(-50%,-50%);opacity:.075;pointer-events:none}.rain-footer{position:relative;z-index:2;margin:14px 0 0;color:#596164;font-size:12px}.rain-footer a{font-weight:800}.rain-orb{position:absolute;border-radius:50%;opacity:.9;background:var(--rain-accent);animation:rain-float 8s ease-in-out infinite}.rain-orb:after{content:"";position:absolute;inset:18%;border-radius:50%;background:var(--rain-accent-soft)}.rain-orb-a{width:250px;height:250px;top:-110px;left:-80px}.rain-orb-b{width:330px;height:330px;right:-140px;bottom:-150px;animation-delay:-3s}@keyframes rain-in{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}@keyframes rain-spin{to{transform:rotate(360deg)}}@keyframes rain-pulse{0%,100%{transform:scale(1);opacity:.88}50%{transform:scale(1.06);opacity:1}}@keyframes rain-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(15px,24px,0)}}@media (max-width:520px){.rain-shell{padding:16px}.rain-card{padding:30px 22px;border-radius:22px}.rain-brand:not(.rain-brand-has-image){width:56px;height:56px}.rain-brand-has-image{max-width:180px}.rain-brand img{max-width:160px;max-height:56px}.rain-footer{margin-top:12px}}@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}';
+	}
+
+	private function hex_to_rgb( $hex ) {
+		$hex = ltrim( (string) $hex, '#' );
+		return array(
+			hexdec( substr( $hex, 0, 2 ) ),
+			hexdec( substr( $hex, 2, 2 ) ),
+			hexdec( substr( $hex, 4, 2 ) ),
+		);
+	}
+
+	private function mix_color( array $source, array $target, $amount ) {
+		$mixed = array();
+		foreach ( $source as $index => $component ) {
+			$mixed[] = (int) round( $component + ( $target[ $index ] - $component ) * $amount );
+		}
+
+		return sprintf( '#%02x%02x%02x', $mixed[0], $mixed[1], $mixed[2] );
+	}
+
+	private function relative_luminance( array $rgb ) {
+		$channels = array_map(
+			static function ( $channel ) {
+				$channel = $channel / 255;
+				return $channel <= 0.03928 ? $channel / 12.92 : pow( ( $channel + 0.055 ) / 1.055, 2.4 );
+			},
+			$rgb
+		);
+
+		return 0.2126 * $channels[0] + 0.7152 * $channels[1] + 0.0722 * $channels[2];
 	}
 
 	private function set_verifier_cookie( $verifier ) {

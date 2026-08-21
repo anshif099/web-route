@@ -10,6 +10,8 @@ final class Config {
 		return array(
 			'enabled'              => 0,
 			'route'                => 'web-route',
+			'brand_image_id'       => 0,
+			'brand_color'          => '#49cad8',
 			'approver_ids'         => array(),
 			'email_tested_at'      => 0,
 			'request_ttl'          => 10 * MINUTE_IN_SECONDS,
@@ -68,6 +70,22 @@ final class Config {
 	public function route_url( array $args = array() ) {
 		$url = set_url_scheme( home_url( '/' . rawurlencode( $this->route() ) . '/' ), 'https' );
 		return $args ? add_query_arg( $args, $url ) : $url;
+	}
+
+	public function brand_image_url() {
+		$image_id = absint( $this->get( 'brand_image_id', 0 ) );
+		$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'medium' ) : '';
+
+		if ( ! $image_url && function_exists( 'get_site_icon_url' ) ) {
+			$image_url = get_site_icon_url( 192 );
+		}
+
+		return $image_url ? esc_url_raw( $image_url ) : '';
+	}
+
+	public function brand_color() {
+		$color = sanitize_hex_color( (string) $this->get( 'brand_color', '#49cad8' ) );
+		return $color ? strtolower( $color ) : '#49cad8';
 	}
 
 	public function table( $name ) {
@@ -137,8 +155,15 @@ final class Config {
 		$current = $this->all();
 		$route   = isset( $input['route'] ) ? preg_replace( '/[^A-Za-z0-9_-]/', '', (string) wp_unslash( $input['route'] ) ) : $current['route'];
 		$route   = '' !== $route ? substr( $route, 0, 48 ) : 'web-route';
+		$brand_image_id = isset( $input['brand_image_id'] ) ? absint( $input['brand_image_id'] ) : absint( $current['brand_image_id'] );
+		$brand_color = isset( $input['brand_color'] ) ? sanitize_hex_color( wp_unslash( $input['brand_color'] ) ) : sanitize_hex_color( $current['brand_color'] );
+		$brand_color = $brand_color ? strtolower( $brand_color ) : '#49cad8';
 		$header  = isset( $input['trusted_proxy_header'] ) ? strtoupper( sanitize_key( wp_unslash( $input['trusted_proxy_header'] ) ) ) : '';
 		$allowed_headers = array( '', 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP' );
+
+		if ( $brand_image_id && ( 'attachment' !== get_post_type( $brand_image_id ) || ! wp_attachment_is_image( $brand_image_id ) ) ) {
+			$brand_image_id = 0;
+		}
 
 		if ( ! in_array( $header, $allowed_headers, true ) ) {
 			$header = '';
@@ -147,6 +172,8 @@ final class Config {
 		return array(
 			'enabled'              => empty( $input['enabled'] ) ? 0 : 1,
 			'route'                => $route,
+			'brand_image_id'       => $brand_image_id,
+			'brand_color'          => $brand_color,
 			'approver_ids'         => array_values( array_filter( array_map( 'absint', isset( $input['approver_ids'] ) ? (array) $input['approver_ids'] : array() ) ) ),
 			'email_tested_at'      => absint( $current['email_tested_at'] ),
 			'request_ttl'          => min( HOUR_IN_SECONDS, max( 120, absint( $input['request_ttl'] ?? 600 ) ) ),

@@ -2,7 +2,7 @@
 Contributors: rainhopes
 Requires at least: 6.4
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,6 +17,8 @@ Web Route protects privileged WordPress browser logins with a default `/web-rout
 5. Send the test email.
 6. Visit the displayed `/web-route` URL over HTTPS.
 7. Enable protection and keep the recovery procedure available.
+
+Use the Security page image setting to choose a site-specific logo for the login and security screens. Web Route detects a theme color from the logo, lets you fine-tune it, and uses the image as a watermark on its 404 screen. If no image is selected, Web Route uses the WordPress Site Icon when available.
 
 The default protected accounts are users with `manage_options`; on Multisite, network super administrators are protected. The failure threshold is fixed at three attempts and the block duration is fixed at one hour.
 

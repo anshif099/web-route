@@ -64,8 +64,8 @@ The route name is configurable, but changing it requires a fresh preflight check
 
 ### 3.3 Direct WordPress URL behavior
 
-- Logged-out `GET /wp-admin/`, `/wp-login.php`, `/admin`, `/login`, and `/dashboard` show a blue-and-white decoy page with HTTP `404`, not a redirect loop.
-- The decoy text is: “This is not a WordPress website.” It must not contain WordPress asset paths, REST calls, generator tags, or plugin identifiers.
+- Logged-out `GET /wp-admin/`, `/wp-login.php`, `/admin`, `/login`, and `/dashboard` show an aqua, black, and white branded decoy page with HTTP `404`, not a redirect loop.
+- The decoy uses a branded “Page not found” heading and large centered “404!” message. It must not contain WordPress asset paths, REST calls, generator tags, or plugin identifiers.
 - Logged-in, approved users keep normal `/wp-admin/` access.
 - Logout, password reset, password-reset confirmation, re-authentication, and interim-login flows are mapped to actions under `/web-route`; they must be covered by integration tests before the core login page is hidden.
 - Public AJAX, cron, CLI, and required integration callbacks are handled through explicit allow rules, not a broad URI bypass.
@@ -73,7 +73,7 @@ The route name is configurable, but changing it requires a fresh preflight check
 ### 3.4 Blocked visitor
 
 - On the third failed credential submission, and on later `/web-route` requests during the block, respond with HTTP `429` and `Retry-After`.
-- Render a self-contained blue-and-white animated page showing:
+- Render a self-contained aqua, black, and white animated page showing:
   - the escaped public site name;
   - the visitor's normalized IP address;
   - “You are temporarily blocked by [site name]”;

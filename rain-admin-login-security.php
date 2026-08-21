@@ -3,7 +3,7 @@
  * Plugin Name: web-route
  * Plugin URI:  https://example.com/rain-admin-login-security
  * Description: Protects privileged WordPress logins with administrator approval, IP rate limiting, a custom login route, and conservative fingerprint reduction.
- * Version:     0.2.0
+ * Version:     0.3.0
  * Requires at least: 6.4
  * Requires PHP: 7.4
  * Author:      Rainhopes
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'RAIN_SECURITY_VERSION', '0.2.0' );
+define( 'RAIN_SECURITY_VERSION', '0.3.0' );
 define( 'RAIN_SECURITY_FILE', __FILE__ );
 define( 'RAIN_SECURITY_DIR', plugin_dir_path( __FILE__ ) );
 
