@@ -21,19 +21,10 @@ final class Admin {
 	public function register_hooks() {
 		add_action( 'admin_menu', array( $this, 'menu' ) );
 		add_action( 'network_admin_menu', array( $this, 'network_menu' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_post_rain_save_settings', array( $this, 'save_settings' ) );
 		add_action( 'admin_post_rain_decide_request', array( $this, 'decide_request' ) );
 		add_action( 'admin_post_rain_test_email', array( $this, 'test_email' ) );
 		add_action( 'admin_notices', array( $this, 'notice' ) );
-	}
-
-	public function enqueue_assets( $hook ) {
-		if ( false === strpos( (string) $hook, 'rain-security' ) || ! $this->can_manage() ) {
-			return;
-		}
-
-		wp_enqueue_media();
 	}
 
 	public function menu() {
@@ -69,6 +60,22 @@ final class Admin {
 		$old_approvers = $this->config->approver_ids();
 		if ( $old_approvers !== $eligible ) {
 			$settings['email_tested_at'] = 0;
+		}
+		if ( isset( $_FILES['rain_brand_image'] ) && is_array( $_FILES['rain_brand_image'] ) && UPLOAD_ERR_NO_FILE !== (int) $_FILES['rain_brand_image']['error'] ) {
+			if ( UPLOAD_ERR_OK !== (int) $_FILES['rain_brand_image']['error'] || ! current_user_can( 'upload_files' ) ) {
+				$this->redirect( 'image_upload_failed' );
+			}
+
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+
+			$attachment_id = media_handle_upload( 'rain_brand_image', 0, array(), array( 'test_form' => false ) );
+			if ( is_wp_error( $attachment_id ) ) {
+				$this->redirect( 'image_upload_failed' );
+			}
+
+			$settings['brand_image_id'] = absint( $attachment_id );
 		}
 		$this->config->update( $settings );
 		if ( $old_route !== $this->config->route() ) {
@@ -135,7 +142,7 @@ final class Admin {
 			<?php $this->render_notice( $notice ); ?>
 			<p><?php esc_html_e( 'Web Route protects privileged browser logins with password verification followed by administrator approval.', 'rain-admin-login-security' ); ?></p>
 			<p><strong><?php esc_html_e( 'Login URL:', 'rain-admin-login-security' ); ?></strong> <code><?php echo esc_html( $this->config->route_url() ); ?></code></p>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="rain_save_settings">
 				<?php wp_nonce_field( 'rain_save_settings', 'rain_settings_nonce' ); ?>
 				<table class="form-table" role="presentation">
@@ -152,9 +159,10 @@ final class Admin {
 						<td>
 							<input id="rain-brand-image-id" name="rain[brand_image_id]" type="hidden" value="<?php echo absint( $settings['brand_image_id'] ); ?>">
 							<img id="rain-brand-preview" src="<?php echo esc_url( $brand_image_url ); ?>" alt="" style="display:<?php echo $brand_image_url ? 'block' : 'none'; ?>;width:96px;height:96px;object-fit:contain;margin:0 0 12px;padding:8px;border:1px solid #c3c4c7;border-radius:8px;background:#fff;">
-							<button id="rain-select-brand" type="button" class="button"><?php esc_html_e( 'Choose image', 'rain-admin-login-security' ); ?></button>
+							<input id="rain-brand-file" name="rain_brand_image" type="file" accept="image/*" class="screen-reader-text">
+							<label for="rain-brand-file" class="button"><?php esc_html_e( 'Choose image', 'rain-admin-login-security' ); ?></label>
 							<button id="rain-remove-brand" type="button" class="button" style="display:<?php echo $brand_image_url ? 'inline-block' : 'none'; ?>"><?php esc_html_e( 'Remove image', 'rain-admin-login-security' ); ?></button>
-							<p class="description"><?php esc_html_e( 'Shown instead of the W on this website’s security pages and used as the 404 watermark. Transparent PNG, WebP, and wide logo images work well. The Site Icon is used when no image is selected.', 'rain-admin-login-security' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Choose an image from your computer, then save the settings. It replaces the W on this website’s security pages and is used as the 404 watermark. Transparent PNG, WebP, and wide logo images work well.', 'rain-admin-login-security' ); ?></p>
 							<p style="display:flex;align-items:center;gap:10px;margin-top:12px;">
 								<label for="rain-brand-color"><strong><?php esc_html_e( 'Logo theme color', 'rain-admin-login-security' ); ?></strong></label>
 								<input id="rain-brand-color" name="rain[brand_color]" type="color" value="<?php echo esc_attr( $brand_color ); ?>">
@@ -218,14 +226,14 @@ final class Admin {
 		</div>
 		<script>
 		(function () {
-			var selectButton = document.getElementById('rain-select-brand');
+			var fileInput = document.getElementById('rain-brand-file');
 			var removeButton = document.getElementById('rain-remove-brand');
 			var imageId = document.getElementById('rain-brand-image-id');
 			var preview = document.getElementById('rain-brand-preview');
 			var colorInput = document.getElementById('rain-brand-color');
 			var colorValue = document.getElementById('rain-brand-color-value');
-			var frame;
 			var defaultColor = '#49cad8';
+			var localPreviewUrl = '';
 
 			function setColor(color) {
 				if (!/^#[0-9a-f]{6}$/i.test(color)) {
@@ -237,7 +245,9 @@ final class Admin {
 
 			function detectColor(source) {
 				var sample = new Image();
-				sample.crossOrigin = 'anonymous';
+				if (source.indexOf('blob:') !== 0 && source.indexOf('data:') !== 0) {
+					sample.crossOrigin = 'anonymous';
+				}
 				sample.onload = function () {
 					var canvas = document.createElement('canvas');
 					var context;
@@ -302,32 +312,32 @@ final class Admin {
 				sample.src = source;
 			}
 
-			if (!selectButton || !window.wp || !wp.media) {
+			if (!fileInput || !removeButton || !imageId || !preview || !colorInput || !colorValue) {
 				return;
 			}
 
-			selectButton.addEventListener('click', function () {
-				if (!frame) {
-					frame = wp.media({
-						title: <?php echo wp_json_encode( __( 'Choose a security page image', 'rain-admin-login-security' ) ); ?>,
-						button: { text: <?php echo wp_json_encode( __( 'Use this image', 'rain-admin-login-security' ) ); ?> },
-						library: { type: 'image' },
-						multiple: false
-					});
-					frame.on('select', function () {
-						var attachment = frame.state().get('selection').first().toJSON();
-						var source = attachment.sizes && attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url;
-						imageId.value = attachment.id;
-						preview.src = source;
-						preview.style.display = 'block';
-						removeButton.style.display = 'inline-block';
-						detectColor(source);
-					});
+			fileInput.addEventListener('change', function () {
+				var file = fileInput.files && fileInput.files[0];
+				if (!file || (file.type && file.type.indexOf('image/') !== 0)) {
+					return;
 				}
-				frame.open();
+
+				if (localPreviewUrl) {
+					URL.revokeObjectURL(localPreviewUrl);
+				}
+				localPreviewUrl = URL.createObjectURL(file);
+				preview.src = localPreviewUrl;
+				preview.style.display = 'block';
+				removeButton.style.display = 'inline-block';
+				detectColor(localPreviewUrl);
 			});
 
 			removeButton.addEventListener('click', function () {
+				if (localPreviewUrl) {
+					URL.revokeObjectURL(localPreviewUrl);
+					localPreviewUrl = '';
+				}
+				fileInput.value = '';
 				imageId.value = '';
 				preview.removeAttribute('src');
 				preview.style.display = 'none';
@@ -344,7 +354,7 @@ final class Admin {
 	}
 
 	private function render_notice( $notice ) {
-	$messages = array( 'saved' => array( 'success', __( 'Web Route settings saved.', 'rain-admin-login-security' ) ), 'no_https' => array( 'error', __( 'Web Route protection requires HTTPS. Enable TLS before enforcing protected login.', 'rain-admin-login-security' ) ), 'no_approver' => array( 'error', __( 'Protection was not enabled because no eligible approver was selected.', 'rain-admin-login-security' ) ), 'email_not_tested' => array( 'error', __( 'Send and verify the Web Route test email before enabling protection.', 'rain-admin-login-security' ) ), 'decision_saved' => array( 'success', __( 'Web Route decision saved.', 'rain-admin-login-security' ) ), 'decision_error' => array( 'error', __( 'The request could not be decided; it may have expired or already been handled.', 'rain-admin-login-security' ) ), 'email_sent' => array( 'success', __( 'A test email was sent to the site admin address.', 'rain-admin-login-security' ) ), 'email_failed' => array( 'error', __( 'The test email could not be sent. Configure WordPress mail delivery before enabling Web Route.', 'rain-admin-login-security' ) ) );
+	$messages = array( 'saved' => array( 'success', __( 'Web Route settings saved.', 'rain-admin-login-security' ) ), 'no_https' => array( 'error', __( 'Web Route protection requires HTTPS. Enable TLS before enforcing protected login.', 'rain-admin-login-security' ) ), 'no_approver' => array( 'error', __( 'Protection was not enabled because no eligible approver was selected.', 'rain-admin-login-security' ) ), 'email_not_tested' => array( 'error', __( 'Send and verify the Web Route test email before enabling protection.', 'rain-admin-login-security' ) ), 'image_upload_failed' => array( 'error', __( 'The security page image could not be uploaded. Choose a supported image file within the site upload limit.', 'rain-admin-login-security' ) ), 'decision_saved' => array( 'success', __( 'Web Route decision saved.', 'rain-admin-login-security' ) ), 'decision_error' => array( 'error', __( 'The request could not be decided; it may have expired or already been handled.', 'rain-admin-login-security' ) ), 'email_sent' => array( 'success', __( 'A test email was sent to the site admin address.', 'rain-admin-login-security' ) ), 'email_failed' => array( 'error', __( 'The test email could not be sent. Configure WordPress mail delivery before enabling Web Route.', 'rain-admin-login-security' ) ) );
 	if ( isset( $messages[ $notice ] ) ) {
 		echo '<div class="notice notice-' . esc_attr( $messages[ $notice ][0] ) . '"><p>' . esc_html( $messages[ $notice ][1] ) . '</p></div>';
 	}
